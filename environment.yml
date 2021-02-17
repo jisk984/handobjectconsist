@@ -31,6 +31,6 @@ dependencies:
     - chumpy
     - kornia==0.2
     - opencv-python
-    - git+https://github.com/hassony2/manopth.git
+    - git+https://github.com/hassony2/manopth.git@return_centerjoint
     - git+https://github.com/hassony2/libyana@v0.2.0
     - neural-renderer-pytorch

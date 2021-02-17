@@ -251,7 +251,7 @@ if __name__ == "__main__":
     # Dataset params
     parser.add_argument(
         "--train_datasets",
-        choices=["syntho3d", "syntho3dv2", "ho3dv2", "fhbhands"],
+        choices=["syntho3d", "syntho3dv2", "ho3dv2", "fhbhands", "obman"],
         default=["fhbhands"],
         nargs="+",
     )

@@ -19,6 +19,8 @@ tmp*
 *.sw*
 *.png
 *.pdf
+*@neomake*
+core*
 
 jsonres/
 pred.json
