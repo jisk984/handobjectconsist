@@ -48,13 +48,18 @@ def get_papersplit_infos(split, root="data", trainval_idx=60000):
             annot = pickle.load(p_f)
             if annot["handJoints3D"].size == 3:
                 annot["handTrans"] = annot["handJoints3D"]
-                annot["handJoints3D"] = annot["handJoints3D"][np.newaxis, :].repeat(21, 0)
+                annot["handJoints3D"] = annot["handJoints3D"][
+                    np.newaxis, :].repeat(21, 0)
                 annot["handPose"] = np.zeros(48)
                 annot["handBeta"] = np.zeros(10)
         img_path = os.path.join(rgb_folder, f"{frame_idx}.png")
         annot["img"] = img_path
         seq_map[seq].append(annot)
-        closeseq_map[idx_count] = {"previous": idx_count, "next": idx_count, "closest": idx_count}
+        closeseq_map[idx_count] = {
+            "previous": idx_count,
+            "next": idx_count,
+            "closest": idx_count
+        }
         idxs.append((seq, seq_counts[seq]))
         seq_counts[seq] += 1
 
@@ -98,18 +103,24 @@ def get_objectsplit_infos(seqs, root, subfolder="train", fraction=1):
         trace_seq = []
         img_nb = seq_lengths[seq]
         for image_idx in range(img_nb):
-            if (image_idx == 0) or (image_idx % spacing == 0) or (image_idx == img_nb - 1):
+            if (image_idx == 0) or (image_idx % spacing
+                                    == 0) or (image_idx == img_nb - 1):
                 strongs.append(idx_count)
                 previous = idx_count
-                closeseq_map[idx_count] = {"previous": idx_count, "next": idx_count, "closest": idx_count}
+                closeseq_map[idx_count] = {
+                    "previous": idx_count,
+                    "next": idx_count,
+                    "closest": idx_count
+                }
                 for stack_idx in seq_stack:
                     closeseq_map[stack_idx]["next"] = idx_count
                     if abs(closeseq_map[stack_idx]["next"] - stack_idx) < abs(
-                        closeseq_map[stack_idx]["previous"] - stack_idx
-                    ):
-                        closeseq_map[stack_idx]["closest"] = closeseq_map[stack_idx]["next"]
+                            closeseq_map[stack_idx]["previous"] - stack_idx):
+                        closeseq_map[stack_idx]["closest"] = closeseq_map[
+                            stack_idx]["next"]
                     else:
-                        closeseq_map[stack_idx]["closest"] = closeseq_map[stack_idx]["previous"]
+                        closeseq_map[stack_idx]["closest"] = closeseq_map[
+                            stack_idx]["previous"]
                 seq_stack.append(idx_count)
                 all_sequences.append(seq_stack)
                 seq_stack = []
@@ -127,6 +138,7 @@ def get_objectsplit_infos(seqs, root, subfolder="train", fraction=1):
 
 def dump(pred_out_path, xyz_pred_list, verts_pred_list, codalab=True):
     """ Save predictions into a json file for official ho3dv2 evaluation. """
+
     # make sure its only lists
     def roundall(rows):
         return [[round(val, 5) for val in row] for row in rows]
@@ -137,10 +149,8 @@ def dump(pred_out_path, xyz_pred_list, verts_pred_list, codalab=True):
     # save to a json
     with open(pred_out_path, "w") as fo:
         json.dump([xyz_pred_list, verts_pred_list], fo)
-    print(
-        "Dumped %d joints and %d verts predictions to %s"
-        % (len(xyz_pred_list), len(verts_pred_list), pred_out_path)
-    )
+    print("Dumped %d joints and %d verts predictions to %s" %
+          (len(xyz_pred_list), len(verts_pred_list), pred_out_path))
     if codalab:
         shutil.copy(pred_out_path, "pred.json")
         subprocess.call(["zip", "-j", "pred.zip", "pred.json"])

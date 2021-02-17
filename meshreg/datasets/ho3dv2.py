@@ -32,7 +32,9 @@ class HO3DV2:
         super().__init__()
         self.split_mode = split_mode
         if split_mode == "paper" and mode == "weak":
-            raise ValueError(f"split mode {split_mode} incompatible will mode {mode} != full")
+            raise ValueError(
+                f"split mode {split_mode} incompatible will mode {mode} != full"
+            )
 
         self.name = "ho3dv2"
         self.full_sequences = full_sequences
@@ -46,18 +48,21 @@ class HO3DV2:
         else:
             prefix = ""
         cache_path = os.path.join(
-            cache_folder, f"{self.name}_{prefix}_{split_mode}_{split}_{mode}_{fraction}.pkl"
-        )
+            cache_folder,
+            f"{self.name}_{prefix}_{split_mode}_{split}_{mode}_{fraction}.pkl")
 
         self.root = os.path.join(root, self.name)
         self.joint_nb = joint_nb
-        self.reorder_idxs = np.array(
-            [0, 13, 14, 15, 16, 1, 2, 3, 17, 4, 5, 6, 18, 10, 11, 12, 19, 7, 8, 9, 20]
-        )
+        self.reorder_idxs = np.array([
+            0, 13, 14, 15, 16, 1, 2, 3, 17, 4, 5, 6, 18, 10, 11, 12, 19, 7, 8,
+            9, 20
+        ])
         self.mini_factor = mini_factor
         self.full_image = full_image
         if fraction != 1:
-            assert mini_factor in [1, 0, None], f"fraction and minifactor not simulatneously supported"
+            assert mini_factor in [
+                1, 0, None
+            ], f"fraction and minifactor not simulatneously supported"
 
         self.all_queries = [
             BaseQueries.IMAGE,
@@ -85,12 +90,14 @@ class HO3DV2:
 
         # Fix dataset split
         valid_splits = ["train", "trainval", "val", "test"]
-        assert split in valid_splits, "{} not in {}".format(split, valid_splits)
+        assert split in valid_splits, "{} not in {}".format(
+            split, valid_splits)
         self.split = split
-        self.cam_intr = np.array([[617.343, 0.0, 312.42], [0.0, 617.343, 241.42], [0.0, 0.0, 1.0]]).astype(
-            np.float32
-        )
-        self.cam_extr = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+        self.cam_intr = np.array([[617.343, 0.0,
+                                   312.42], [0.0, 617.343, 241.42],
+                                  [0.0, 0.0, 1.0]]).astype(np.float32)
+        self.cam_extr = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0],
+                                  [0, 0, 0, 1]])
         self.layer = manolayer.ManoLayer(
             joint_rot_mode="axisang",
             use_pca=False,
@@ -101,7 +108,10 @@ class HO3DV2:
         if self.split_mode == "objects":
             if self.split == "train":
                 if like_v1:
-                    seqs = {"SM5", "MC6", "MC4", "SM3", "SM4", "SS3", "SS2", "SM2", "SS1", "MC5", "MC1"}
+                    seqs = {
+                        "SM5", "MC6", "MC4", "SM3", "SM4", "SS3", "SS2", "SM2",
+                        "SS1", "MC5", "MC1"
+                    }
                 else:
                     seqs = {
                         "ABF11",
@@ -186,10 +196,23 @@ class HO3DV2:
                     "SS1",
                     "SS3",
                     "SMu42",
+                    "ABF10",
+                    "MC1",
+                    "BB11",
+                    "GPMF12",
+                    "GSF13",
+                    "SB14",
+                    "ShSu10",
+                    "SM3",
+                    "SMu1",
+                    "SiBF11",
+                    "SS2",
+                    "SiS1",
                 }
                 subfolder = "train"
             elif self.split == "val":
                 seqs = {"ABF11", "BB12", "GPMF13", "GSF14"}
+                seqs = {"ABF11", "BB12", "GPMF13", "GSF14", "ND2", "MDF14"}
                 subfolder = "train"
             elif self.split == "test":
                 if like_v1:
@@ -221,12 +244,10 @@ class HO3DV2:
         else:
             if self.split_mode == "objects":
                 all_seqs, seq_map, closeseq_map, strongs, weaks, idxs = ho3dv2utils.get_objectsplit_infos(
-                    seqs, self.root, subfolder, fraction=fraction
-                )
+                    seqs, self.root, subfolder, fraction=fraction)
             elif self.split_mode == "paper":
                 all_seqs, seq_map, closeseq_map, strongs, weaks, idxs = ho3dv2utils.get_papersplit_infos(
-                    split, self.root
-                )
+                    split, self.root)
             annotations = {
                 "all_sequences": all_seqs,
                 "closeseq_map": closeseq_map,
@@ -250,13 +271,20 @@ class HO3DV2:
         assert len(self.fulls) == len(self.idxs)
         assert not len((set(self.weaks) | set(self.strongs)) - set(self.fulls))
         if len(self.weaks):
-            weak_distances = [abs(key - self.closeseq_map[key]["closest"]) for key in self.weaks]
+            weak_distances = [
+                abs(key - self.closeseq_map[key]["closest"])
+                for key in self.weaks
+            ]
             assert min(weak_distances) == 1
         if len(self.strongs):
-            strong_distances = [abs(key - self.closeseq_map[key]["closest"]) for key in self.strongs]
+            strong_distances = [
+                abs(key - self.closeseq_map[key]["closest"])
+                for key in self.strongs
+            ]
             assert min(strong_distances) == 0
             assert max(strong_distances) == 0
-        self.obj_meshes = ho3dfullutils.load_objects(os.path.join(self.root, "modelsprocess"))
+        self.obj_meshes = ho3dfullutils.load_objects(
+            os.path.join(self.root, "modelsprocess"))
 
         # Get paired links as neighboured joints
         self.links = [
@@ -340,11 +368,12 @@ class HO3DV2:
 
     def get_hand_verts3d(self, idx):
         handpose, handtrans, handshape = self.get_hand_info(idx)
-        handverts, handjoints = self.layer(
-            torch.Tensor(handpose).unsqueeze(0), torch.Tensor(handshape).unsqueeze(0)
-        )
+        handverts, handjoints, _ = self.layer(
+            torch.Tensor(handpose).unsqueeze(0),
+            torch.Tensor(handshape).unsqueeze(0))
         handverts = handverts[0].numpy() / 1000 + handtrans
-        trans_handverts = self.cam_extr[:3, :3].dot(handverts.transpose()).transpose()
+        trans_handverts = self.cam_extr[:3, :3].dot(
+            handverts.transpose()).transpose()
         return trans_handverts
 
     def get_hand_verts2d(self, idx):
@@ -392,7 +421,8 @@ class HO3DV2:
         obj_id = annot["objName"]
         verts = self.obj_meshes[obj_id]["verts"]
         trans_verts = rot.dot(verts.transpose()).transpose() + trans
-        trans_verts = self.cam_extr[:3, :3].dot(trans_verts.transpose()).transpose()
+        trans_verts = self.cam_extr[:3, :3].dot(
+            trans_verts.transpose()).transpose()
         obj_verts = np.array(trans_verts).astype(np.float32)
         return obj_verts
 
@@ -423,7 +453,8 @@ class HO3DV2:
         trans = annot["objTrans"]
         corners = annot["objCorners3DRest"]
         trans_corners = rot.dot(corners.transpose()).transpose() + trans
-        trans_corners = self.cam_extr[:3, :3].dot(trans_corners.transpose()).transpose()
+        trans_corners = self.cam_extr[:3, :3].dot(
+            trans_corners.transpose()).transpose()
         obj_corners = np.array(trans_corners).astype(np.float32)
         return obj_corners
 
@@ -493,7 +524,8 @@ class HO3DV2:
         else:
             img_name = self.image_names[idx]
             bbox = self.box_infos[img_name]["bbox"]
-            center = np.array([(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[2]) / 2])
+            center = np.array([(bbox[0] + bbox[2]) / 2,
+                               (bbox[1] + bbox[2]) / 2])
             scale = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
         return center, scale
 

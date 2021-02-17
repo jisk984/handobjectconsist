@@ -44,7 +44,8 @@ class ManoBranch(nn.Module):
             mano_pose_size = 16 * 9
         # Initial base layers of MANO decoder
         base_layers = []
-        for inp_neurons, out_neurons in zip(base_neurons[:-1], base_neurons[1:]):
+        for inp_neurons, out_neurons in zip(base_neurons[:-1],
+                                            base_neurons[1:]):
             if dropout:
                 base_layers.append(nn.Dropout(p=dropout))
             base_layers.append(nn.Linear(inp_neurons, out_neurons))
@@ -56,14 +57,16 @@ class ManoBranch(nn.Module):
         if not self.use_pca:
             # Initialize all nondiagonal items on rotation matrix weights to 0
             self.pose_reg.bias.data.fill_(0)
-            weight_mask = self.pose_reg.weight.data.new(np.identity(3)).view(9).repeat(16)
+            weight_mask = self.pose_reg.weight.data.new(
+                np.identity(3)).view(9).repeat(16)
             self.pose_reg.weight.data = torch.abs(
-                weight_mask.unsqueeze(1).repeat(1, 256).float() * self.pose_reg.weight.data
-            )
+                weight_mask.unsqueeze(1).repeat(1, 256).float() *
+                self.pose_reg.weight.data)
 
         # Shape layers to predict MANO shape parameters
         if self.use_shape:
-            self.shape_reg = torch.nn.Sequential(nn.Linear(base_neurons[-1], 10))
+            self.shape_reg = torch.nn.Sequential(
+                nn.Linear(base_neurons[-1], 10))
 
         # Mano layer which outputs the hand mesh given the hand pose and shape
         # paramters
@@ -90,7 +93,8 @@ class ManoBranch(nn.Module):
         if pose is None:
             pose = self.pose_reg(base_features)
         if self.mano_pose_coeff != 1:
-            pose = torch.cat([pose[:, :3], self.mano_pose_coeff * pose[:, 3:]], 1)
+            pose = torch.cat([pose[:, :3], self.mano_pose_coeff * pose[:, 3:]],
+                             1)
         if not self.use_pca:
             # Reshape to rotation matrixes
             mano_pose = pose.reshape(pose.shape[0], 16, 3, 3)
@@ -98,10 +102,11 @@ class ManoBranch(nn.Module):
             mano_pose = pose
 
         # Prepare for splitting batch in right hands and left hands
-        is_rights = (inp.new_tensor([side == "right" for side in sides])).bool()
+        is_rights = (inp.new_tensor([side == "right"
+                                     for side in sides])).bool()
         is_lefts = ~is_rights
-        is_rights = is_rights[: pose.shape[0]]
-        is_lefts = is_lefts[: pose.shape[0]]
+        is_rights = is_rights[:pose.shape[0]]
+        is_lefts = is_lefts[:pose.shape[0]]
 
         # Get shape
         if shape is not None:
@@ -127,13 +132,11 @@ class ManoBranch(nn.Module):
         # Get MANO vertices and joints for left and right hands given
         # predicted mano parameters
         if pose_right.shape[0] > 0:
-            verts_right, joints_right = self.mano_layer_right(
-                pose_right, th_betas=shape_right, th_trans=trans_right
-            )
+            verts_right, joints_right, _ = self.mano_layer_right(
+                pose_right, th_betas=shape_right, th_trans=trans_right)
         if pose_left.shape[0] > 0:
-            verts_left, joints_left = self.mano_layer_left(
-                pose_left, th_betas=shape_left, th_trans=trans_left
-            )
+            verts_left, joints_left, _ = self.mano_layer_left(
+                pose_left, th_betas=shape_left, th_trans=trans_left)
         # Reassemble right and left hands
         verts = inp.new_empty((inp.shape[0], 778, 3))
         joints = inp.new_empty((inp.shape[0], 21, 3))
@@ -151,7 +154,12 @@ class ManoBranch(nn.Module):
                 shape[is_lefts] = shape_left
 
         # Gather results in metric space (vs MANO millimeter outputs)
-        results = {"verts3d": verts / 1000, "joints3d": joints / 1000, "shape": shape, "pose": pose}
+        results = {
+            "verts3d": verts / 1000,
+            "joints3d": joints / 1000,
+            "shape": shape,
+            "pose": pose
+        }
         return results
 
 
@@ -181,7 +189,8 @@ class ManoLoss:
 
         # If needed, compute and add vertex loss
         if TransQueries.HANDVERTS3D in target and self.lambda_verts3d:
-            verts3d_loss = torch_f.mse_loss(preds["verts3d"], target[TransQueries.HANDVERTS3D].cuda())
+            verts3d_loss = torch_f.mse_loss(
+                preds["verts3d"], target[TransQueries.HANDVERTS3D].cuda())
             final_loss += self.lambda_verts3d * verts3d_loss
             verts3d_loss = verts3d_loss
         else:
@@ -195,13 +204,15 @@ class ManoLoss:
 
             # Add to final_loss for backpropagation if needed
             if self.lambda_joints3d:
-                joints3d_loss = torch_f.mse_loss(pred_joints, target_joints.cuda())
+                joints3d_loss = torch_f.mse_loss(pred_joints,
+                                                 target_joints.cuda())
                 final_loss += self.lambda_joints3d * joints3d_loss
                 mano_losses["mano_joints3d"] = joints3d_loss
 
         # Compute hand shape regularization loss
         if self.lambda_shape:
-            shape_loss = torch_f.mse_loss(preds["shape"], torch.zeros_like(preds["shape"]))
+            shape_loss = torch_f.mse_loss(preds["shape"],
+                                          torch.zeros_like(preds["shape"]))
             final_loss += self.lambda_shape * shape_loss
             reg_loss += self.lambda_shape * shape_loss
             shape_loss = shape_loss
@@ -211,7 +222,8 @@ class ManoLoss:
 
         # Compute hand pose regularization loss
         if self.lambda_pose_reg:
-            pose_reg_loss = torch_f.mse_loss(preds["pose"][:, 3:], torch.zeros_like(preds["pose"][:, 3:]))
+            pose_reg_loss = torch_f.mse_loss(
+                preds["pose"][:, 3:], torch.zeros_like(preds["pose"][:, 3:]))
             final_loss += self.lambda_pose_reg * pose_reg_loss
             reg_loss += self.lambda_pose_reg * pose_reg_loss
             mano_losses["pose_reg"] = pose_reg_loss

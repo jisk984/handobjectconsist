@@ -13,7 +13,6 @@ from libyana.modelutils import freeze
 from meshreg.datasets import collate
 from meshreg.netscripts import evalpass, reloadmodel, get_dataset
 
-
 plt.switch_backend("agg")
 
 
@@ -29,21 +28,24 @@ def main(args):
         f"checkpoints/{dat_str}_mini{args.mini_factor}/"
         f"{now.year}_{now.month:02d}_{now.day:02d}/"
         f"{args.com}_frac{args.fraction}_mode{args.mode}_bs{args.batch_size}_"
-        f"objs{args.obj_scale_factor}_objt{args.obj_trans_factor}"
-    )
+        f"objs{args.obj_scale_factor}_objt{args.obj_trans_factor}")
 
     # Initialize local checkpoint folder
-    save_args(args, exp_id, "opt")
+    save_args(args, exp_id, "opt", git=False)
     result_folder = os.path.join(exp_id, "results")
     os.makedirs(result_folder, exist_ok=True)
-    pyapt_path = os.path.join(result_folder, f"{args.pyapt_id}__{now.strftime('%H_%M_%S')}")
+    pyapt_path = os.path.join(result_folder,
+                              f"{args.pyapt_id}__{now.strftime('%H_%M_%S')}")
     with open(pyapt_path, "a") as t_f:
         t_f.write(" ")
 
     val_dataset, input_size = get_dataset.get_dataset(
         args.val_dataset,
         split=args.val_split,
-        meta={"version": args.version, "split_mode": "paper"},
+        meta={
+            "version": args.version,
+            "split_mode": "paper"
+        },
         use_cache=args.use_cache,
         mini_factor=args.mini_factor,
         mode=args.mode,
@@ -114,7 +116,9 @@ if __name__ == "__main__":
     parser.add_argument("--synth", action="store_true")
     parser.add_argument("--version", default=3, type=int)
     parser.add_argument("--fraction", type=float, default=1)
-    parser.add_argument("--mode", choices=["strong", "weak", "full"], default="strong")
+    parser.add_argument("--mode",
+                        choices=["strong", "weak", "full"],
+                        default="strong")
 
     # Test options
     parser.add_argument("--dump_results", action="store_true")
@@ -124,8 +128,9 @@ if __name__ == "__main__":
     # Model params
     parser.add_argument("--center_idx", default=9, type=int)
     parser.add_argument(
-        "--true_root", action="store_true", help="Replace predicted wrist position with ground truth root"
-    )
+        "--true_root",
+        action="store_true",
+        help="Replace predicted wrist position with ground truth root")
     parser.add_argument("--resume")
 
     # Training params
@@ -135,7 +140,9 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=10000)
     parser.add_argument("--freeze_batchnorm", action="store_true")
     parser.add_argument("--pyapt_id")
-    parser.add_argument("--criterion2d", choices=["l2", "l1", "smooth_l1"], default="l2")
+    parser.add_argument("--criterion2d",
+                        choices=["l2", "l1", "smooth_l1"],
+                        default="l2")
 
     # Weighting
     parser.add_argument("--obj_trans_factor", type=float, default=1)
