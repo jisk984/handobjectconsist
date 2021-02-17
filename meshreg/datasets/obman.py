@@ -7,6 +7,7 @@ from libyana.meshutils.meshio import fast_load_obj
 from manopth import manolayer
 from pytorch3d import ops as pt3dops
 from transforms3d.axangles import mat2axangle
+from tqdm import tqdm
 
 from meshreg.datasets.queries import BaseQueries, get_trans_queries
 from meshreg.datasets import manoutils
@@ -47,6 +48,7 @@ class ObMan:
             self.obman_data = pickle.load(p_f)
             self._size = len(self.obman_data['obj_paths'])
         self.has_dist2strong = False
+        self.object_models = {}
 
         self.layer = manolayer.ManoLayer(
             joint_rot_mode="axisang",
@@ -86,6 +88,17 @@ class ObMan:
         trans_queries = get_trans_queries(self.all_queries)
         self.all_queries.extend(trans_queries)
 
+        obj_models = {}
+        obj_paths = [
+            obj_path.replace(".pkl", "_proc.pkl")
+            for obj_path in self.obman_data["obj_paths"]
+        ]
+        print(f"Loading obman object models")
+        for tar in tqdm(obj_paths):
+            with open(tar, "rb") as p_f:
+                data = pickle.load(p_f)
+                obj_models[tar] = data
+        self.obj_models = obj_models
         # Get paired links as neighboured joints
         self.links = [
             (0, 1, 2, 3, 4),
@@ -139,8 +152,6 @@ class ObMan:
         )
 
         # Process object
-        with open(obj_path.replace(".pkl", ".obj")) as o_f:
-            mesh = fast_load_obj(o_f)[0]
         with open(obj_path.replace(".pkl", "_proc.pkl"), "rb") as p_f:
             mesh = pickle.load(p_f)
         obj_verts = mesh['vertices']
@@ -173,9 +184,7 @@ class ObMan:
     @lru_cache(maxsize=512)
     def get_objmesh(self, idx):
         obj_path = self.obman_data["obj_paths"][idx]
-        obj_path = obj_path.replace(".pkl", ".obj")
-        with open(obj_path) as o_f:
-            mesh = fast_load_obj(o_f)[0]
+        mesh = self.obj_models[obj_path.replace(".pkl", "_proc.pkl")]
         vertices = mesh['vertices']
         faces = mesh['faces']
         return vertices, faces

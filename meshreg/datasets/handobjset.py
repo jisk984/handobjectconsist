@@ -92,6 +92,7 @@ class HandObjSet(Dataset):
     def __len__(self):
         return len(self.pose_dataset)
 
+    @profile
     def get_sample(self, idx, query=None, color_augm=None, space_augm=None):
         if query is None:
             query = self.queries

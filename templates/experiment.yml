@@ -5,10 +5,13 @@ lr:
 batch_size:
   - 32
 center_jittering:
-  - 0.7
-  - 0.5
+  - 0.1
+  - 0.3
 scale_jittering:
   - 0
+train_dataset:
+  # - "ho3dv2"
+  - "obman"
 train_splits:
   - "trainval"
 val_split:
