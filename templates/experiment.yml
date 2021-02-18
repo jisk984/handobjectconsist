@@ -18,9 +18,9 @@ train_dataset:
 val_dataset:
   - "obman"
 train_splits:
-  - "trainval"
+  # - "trainval"
+  - "train"
 val_split:
-  - "val"
+  - "test"
 predict_scale:
-  - 1
   - 0

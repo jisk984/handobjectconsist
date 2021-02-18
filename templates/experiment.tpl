@@ -1,3 +1,4 @@
+source ~/.bashrc
 which conda
 conda activate physimpy37
 cd /gpfswork/rech/tan/usk19gv/code/pose_3d/handobjectconsist/

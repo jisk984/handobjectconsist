@@ -49,7 +49,6 @@ class ObMan:
             self.obman_data = pickle.load(p_f)
             self._size = len(self.obman_data['obj_paths'])
         self.has_dist2strong = False
-        self.object_models = {}
 
         self.layer = manolayer.ManoLayer(
             joint_rot_mode="axisang",
