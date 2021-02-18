@@ -5,14 +5,22 @@ lr:
 batch_size:
   - 32
 center_jittering:
-  - 0.1
   - 0.3
 scale_jittering:
+  - 0.0
+com:
+  - "predict_and_not_scale/"
+max_rot:
   - 0
 train_dataset:
   # - "ho3dv2"
+  - "obman"
+val_dataset:
   - "obman"
 train_splits:
   - "trainval"
 val_split:
   - "val"
+predict_scale:
+  - 1
+  - 0

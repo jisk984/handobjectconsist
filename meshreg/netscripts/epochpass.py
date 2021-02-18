@@ -69,7 +69,10 @@ def epoch_pass(
         if batch_idx % display_freq == 0 and epoch % epoch_display_freq == 0:
             img_filepath = f"{prefix}_epoch{epoch:04d}_batch{batch_idx:06d}.png"
             save_img_path = os.path.join(img_folder, img_filepath)
-            samplevis.sample_vis(batch, results, fig=fig, save_img_path=save_img_path)
+            samplevis.sample_vis(batch,
+                                 results,
+                                 fig=fig,
+                                 save_img_path=save_img_path)
         evaluate.feed_evaluators(evaluators, batch, results)
     if lr_decay_gamma and scheduler is not None:
         scheduler.step()
@@ -90,7 +93,9 @@ def epoch_pass(
     save_img_path = os.path.join(img_folder, img_filepath)
     # Filter out Nan pck curves
     evaluator_results = {
-        eval_name: res for eval_name, res in evaluator_results.items() if res["epe_mean"] == res["epe_mean"]
+        eval_name: res
+        for eval_name, res in evaluator_results.items()
+        if res["epe_mean"] == res["epe_mean"]
     }
     evalvis.eval_vis(evaluator_results, save_img_path, fig=fig)
     pickle_path = save_img_path.replace(".png", ".pkl")

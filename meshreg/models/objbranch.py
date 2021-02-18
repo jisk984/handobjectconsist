@@ -1,14 +1,20 @@
-from torch import nn
-
+import torch
+from libyana.camutils import project as camproject
 from manopth import rodrigues_layer
+from torch import nn
 
 from meshreg.datasets.queries import BaseQueries, TransQueries
 from meshreg.models import project
-from libyana.camutils import project as camproject
 
 
 class ObjBranch(nn.Module):
-    def __init__(self, trans_factor=1, scale_factor=1):
+    def __init__(
+        self,
+        trans_factor=1,
+        scale_factor=1,
+        model_scale_factor=0.1,
+        predict_scale=False,
+    ):
         """
         Args:
             trans_factor: Scaling parameter to insure translation and scale
@@ -18,13 +24,22 @@ class ObjBranch(nn.Module):
                 significantly influences the final loss variation)
             scale_factor: Scaling parameter to insure translation and scale
                 are updated similarly during training
+            model_scale_factor: Scaling factor for 3D model
         """
         super(ObjBranch, self).__init__()
         self.trans_factor = trans_factor
         self.scale_factor = scale_factor
+        self.model_scale_factor = model_scale_factor
         self.inp_res = [256, 256]
+        self.predict_scale = predict_scale
 
-    def forward(self, sample, scaletrans=None, scale=None, trans=None, rotaxisang=None):
+    def forward(self,
+                sample,
+                scaletrans=None,
+                scale=None,
+                model_scale=None,
+                trans=None,
+                rotaxisang=None):
         """
         Args:
             scaletrans: torch.Tensor of shape [batch_size, channels] with channels == 6
@@ -42,26 +57,41 @@ class ObjBranch(nn.Module):
             trans = scaletrans[:, 1:3]
         if rotaxisang is None:
             rotaxisang = scaletrans[:, 3:]
+        if model_scale is None and self.predict_scale:
+            model_scale = scaletrans[:, 6:]
+
         # Get rotation matrixes from axis-angles
-        rotmat = rodrigues_layer.batch_rodrigues(rotaxisang).view(rotaxisang.shape[0], 3, 3)
+        rotmat = rodrigues_layer.batch_rodrigues(rotaxisang).view(
+            rotaxisang.shape[0], 3, 3)
         canobjverts = sample[BaseQueries.OBJCANVERTS].cuda()
-        rotobjverts = rotmat.bmm(canobjverts.float().transpose(1, 2)).transpose(1, 2)
+        if self.predict_scale:
+            # Prevent objects from shrinking below 1 cm
+            canobjverts = canobjverts * (1 + model_scale.view(
+                batch_size, 1, 1)) * self.model_scale_factor
+        rotobjverts = rotmat.bmm(canobjverts.float().transpose(1,
+                                                               2)).transpose(
+                                                                   1, 2)
 
         final_trans = trans.unsqueeze(1) * self.trans_factor
         final_scale = scale.view(batch_size, 1, 1) * self.scale_factor
         height, width = tuple(sample[TransQueries.IMAGE].shape[2:])
         camintr = sample[TransQueries.CAMINTR].cuda()
-        objverts3d, center3d = project.recover_3d_proj(
-            rotobjverts, camintr, final_scale, final_trans, input_res=(width, height)
-        )
+        objverts3d, center3d = project.recover_3d_proj(rotobjverts,
+                                                       camintr,
+                                                       final_scale,
+                                                       final_trans,
+                                                       input_res=(width,
+                                                                  height))
         # Recover 2D positions given camera intrinsic parameters and object vertex
         # coordinates in camera coordinate reference
         pred_objverts2d = camproject.batch_proj2d(objverts3d, camintr)
         if BaseQueries.OBJCORNERS3D in sample:
             canobjcorners = sample[BaseQueries.OBJCANCORNERS].cuda()
-            rotobjcorners = rotmat.bmm(canobjcorners.float().transpose(1, 2)).transpose(1, 2)
+            rotobjcorners = rotmat.bmm(canobjcorners.float().transpose(
+                1, 2)).transpose(1, 2)
             recov_objcorners3d = rotobjcorners + center3d
-            pred_objcorners2d = camproject.batch_proj2d(rotobjcorners + center3d, camintr)
+            pred_objcorners2d = camproject.batch_proj2d(
+                rotobjcorners + center3d, camintr)
         else:
             pred_objcorners2d = None
             recov_objcorners3d = None

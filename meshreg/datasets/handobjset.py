@@ -50,6 +50,7 @@ class HandObjSet(Dataset):
         block_rot=False,
         sample_nb=None,
         has_dist2strong=False,
+        rescale_canonical=False,
     ):
         """
         Args:
@@ -85,6 +86,7 @@ class HandObjSet(Dataset):
         self.train = train
         self.scale_jittering = scale_jittering
         self.center_jittering = center_jittering
+        self.rescale_canonical = rescale_canonical
 
         self.queries = queries
         self.has_dist2strong = has_dist2strong
@@ -92,7 +94,6 @@ class HandObjSet(Dataset):
     def __len__(self):
         return len(self.pose_dataset)
 
-    @profile
     def get_sample(self, idx, query=None, color_augm=None, space_augm=None):
         if query is None:
             query = self.queries
@@ -299,7 +300,8 @@ class HandObjSet(Dataset):
 
         # Get 3D obj vertices
         if TransQueries.OBJCANROTVERTS in query or BaseQueries.OBJCANROTVERTS in query:
-            obj_canverts3d = self.pose_dataset.get_obj_verts_can_rot(idx)
+            obj_canverts3d = self.pose_dataset.get_obj_verts_can_rot(
+                idx, rescale=self.rescale_canonical)
             if flip:
                 obj_canverts3d[:, 0] = -obj_canverts3d[:, 0]
             if BaseQueries.OBJCANROTVERTS in query:
@@ -326,7 +328,7 @@ class HandObjSet(Dataset):
             sample[BaseQueries.OBJFACES] = obj_faces
         if BaseQueries.OBJCANVERTS in query:
             obj_canverts, obj_cantrans, obj_canscale = self.pose_dataset.get_obj_verts_can(
-                idx)
+                idx, rescale=self.rescale_canonical)
             if flip:
                 obj_canverts[:, 0] = -obj_canverts[:, 0]
             sample[BaseQueries.OBJCANVERTS] = obj_canverts

@@ -28,6 +28,7 @@ def get_dataset(
     spacing=2,
     scale_jittering=0,
     use_cache=False,
+    rescale_canonical=False,
 ):
     if dataset_name == "ho3dv2":
         pose_dataset = ho3dv2.HO3DV2(
@@ -78,5 +79,6 @@ def get_dataset(
         sample_nb=sample_nb,
         spacing=spacing,
         has_dist2strong=has_dist2strong,
+        rescale_canonical=rescale_canonical,
     )
     return dataset, input_res

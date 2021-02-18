@@ -9,7 +9,9 @@ from tqdm import tqdm
 
 from meshreg import simplifymesh
 
-pkl_path = "/gpfsstore/rech/tan/usk19gv/datasets/obmantrain.pkl"
+# pkl_path = "/gpfsstore/rech/tan/usk19gv/datasets/obmantrain.pkl"
+# pkl_path = "/gpfsstore/rech/tan/usk19gv/datasets/obmanval.pkl"
+pkl_path = "/gpfsstore/rech/tan/usk19gv/datasets/obmantest.pkl"
 vert_nb = 1000
 parser = argparse.ArgumentParser()
 parser.add_argument("--data_offset", type=int, default=0)
@@ -18,20 +20,24 @@ args = parser.parse_args()
 
 with open(pkl_path, "rb") as p_f:
     obman_data = pickle.load(p_f)
-
+# Correct paths
+# obman_data['obj_paths'] = [
+#     obj_path.replace('/sequoia/data2/dataset/shapenet', 'datasymlinks')
+#     for obj_path in obman_data['obj_paths']
+# ]
+#
+# obman_data['image_names'] = [
+#     img_path.replace('/sequoia/data3/datasets/handatasets/mano_grasps/v33',
+#                      'datasymlinks/obman')
+#     for img_path in obman_data['image_names']
+# ]
+# with open(pkl_path, "wb") as p_f:
+#     pickle.dump(obman_data, p_f)
 obj_paths = sorted(list(set(
     obman_data['obj_paths'])))[args.data_offset::args.data_step]
 
 srcs = [obj_path.replace(".pkl", ".obj") for obj_path in obj_paths]
 tars = [obj_path.replace(".pkl", "_proc.obj") for obj_path in obj_paths]
-
-obj_models = {}
-for tar in tqdm(tars):
-    with open(tar.replace(".obj", ".pkl"), "rb") as p_f:
-        data = pickle.load(p_f)
-        obj_models[tar] = data
-import pudb
-pu.db
 
 # Parallel(n_jobs=10, verbose=8)(delayed(simplifymesh.simplify_mesh)(src, tar)
 #                                for src, tar in zip(srcs, tars))

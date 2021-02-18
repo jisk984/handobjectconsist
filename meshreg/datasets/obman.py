@@ -1,26 +1,26 @@
+import os
 import pickle
+from functools import lru_cache
 
 import numpy as np
 import torch
 import trimesh
-from libyana.meshutils.meshio import fast_load_obj
-from manopth import manolayer
-from pytorch3d import ops as pt3dops
-from transforms3d.axangles import mat2axangle
-from tqdm import tqdm
-
-from meshreg.datasets.queries import BaseQueries, get_trans_queries
-from meshreg.datasets import manoutils
 from libyana.meshutils import meshnorm
+from manopth import manolayer
 from PIL import Image
-from functools import lru_cache
+from pytorch3d import ops as pt3dops
+from tqdm import tqdm
+from transforms3d.axangles import mat2axangle
+
+from meshreg.datasets import manoutils
+from meshreg.datasets.queries import BaseQueries, get_trans_queries
 
 
 class ObMan:
     def __init__(
         self,
         root="local_data/datasets",
-        pkl_path="/gpfsstore/rech/tan/usk19gv/datasets/obmantrain.pkl",
+        pkl_folder="/gpfsstore/rech/tan/usk19gv/datasets/",
         split="train",
         mano_root="assets/mano",
         ref_idx=0,
@@ -44,6 +44,7 @@ class ObMan:
 
         self.camintr = np.array([[480., 0., 128.], [0., 480., 128.],
                                  [0., 0., 1.]]).astype(np.float32)
+        pkl_path = os.path.join(pkl_folder, f"obman{split}.pkl")
         with open(pkl_path, "rb") as p_f:
             self.obman_data = pickle.load(p_f)
             self._size = len(self.obman_data['obj_paths'])
@@ -94,7 +95,7 @@ class ObMan:
             for obj_path in self.obman_data["obj_paths"]
         ]
         print(f"Loading obman object models")
-        for tar in tqdm(obj_paths):
+        for tar in tqdm(list(set(obj_paths))):
             with open(tar, "rb") as p_f:
                 data = pickle.load(p_f)
                 obj_models[tar] = data
@@ -204,14 +205,17 @@ class ObMan:
             trans_vertices.transpose()).transpose())
         return trans_vertices.astype(np.float32)
 
-    def get_obj_verts_can(self, idx, rescale=True, no_center=False):
+    def get_obj_verts_can(self, idx, rescale=False, no_center=False):
         verts, _ = self.get_objmesh(idx)
         if rescale:
-            return meshnorm.center_vert_bbox(verts, scale=False)
+            return meshnorm.center_vert_bbox(verts, scale=True)
         elif no_center:
             return verts, np.array([0, 0]), 1
         else:
-            return meshnorm.center_vert_bbox(verts, scale=False)
+            obj_scale = self.obman_data['meta_infos'][idx]['obj_scale']
+
+            verts, cent, scale = meshnorm.center_vert_bbox(verts, scale=False)
+            return verts * obj_scale, cent, scale
         return vertices.astype(np.float32)
 
     def get_objverts2d(self, idx):
@@ -225,7 +229,8 @@ class ObMan:
         return points2d.astype(np.float32)
 
     def get_hand_verts3d(self, idx):
-        return self.obman_data['hand_verts3d'][idx].astype(np.float32)
+        return (self.obman_data['hand_verts3d'][idx].dot(
+            self.cam_extr[:3, :3])).astype(np.float32)
 
     def get_hand_verts2d(self, idx):
         verts3d = self.get_hand_verts3d(idx)
@@ -236,7 +241,8 @@ class ObMan:
         return self.camintr.astype(np.float32)
 
     def get_joints3d(self, idx):
-        return self.obman_data['joints3d'][idx].astype(np.float32)
+        return (self.obman_data['joints3d'][idx].dot(
+            self.cam_extr[:3, :3])).astype(np.float32)
 
     def get_joints2d(self, idx):
         return self.obman_data['joints2d'][idx].astype(np.float32)

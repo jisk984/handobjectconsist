@@ -32,6 +32,7 @@ def main(args):
         f"checkpoints/{dat_str}_{split_str}_mini{args.mini_factor}/{now.year}_{now.month:02d}_{now.day:02d}/"
         f"{args.com}_frac{args.fraction:.1e}"
         f"lr{args.lr}_mom{args.momentum}_bs{args.batch_size}_"
+        f"_preds{args.predict_scale}_mrow{args.max_rot}"
         f"_lmbeta{args.mano_lambda_shape:.1e}"
         f"_jc{args.center_jittering:.2f}_sj{args.scale_jittering:.2f}"
         f"_lmpr{args.mano_lambda_pose_reg:.1e}"
@@ -82,6 +83,7 @@ def main(args):
                 center_jittering=args.center_jittering,
                 fraction=args.fraction,
                 mode="strong",
+                rescale_canonical=args.predict_scale,
                 sample_nb=None,
             )
             train_loader = torch.utils.data.DataLoader(
@@ -108,6 +110,7 @@ def main(args):
             block_rot=args.block_rot,
             max_rot=args.max_rot,
             center_idx=args.center_idx,
+            rescale_canonical=args.predict_scale,
             scale_jittering=args.scale_jittering,
             center_jittering=args.center_jittering,
             sample_nb=None,
@@ -137,6 +140,7 @@ def main(args):
         obj_lambda_verts3d=args.obj_lambda_verts3d,
         obj_trans_factor=args.obj_trans_factor,
         obj_scale_factor=args.obj_scale_factor,
+        predict_scale=args.predict_scale,
         mano_fhb_hand="fhbhands" in args.train_datasets,
     )
     model.cuda()
@@ -257,7 +261,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--val_dataset",
-        choices=["ho3dv2", "fhbhands"],
+        choices=["ho3dv2", "fhbhands", "obman"],
         default="fhbhands",
     )
     parser.add_argument("--train_splits", default=["train"], nargs="+")
@@ -338,6 +342,7 @@ if __name__ == "__main__":
                         type=float,
                         default=0.00005,
                         help="Learning rate")
+    parser.add_argument("--predict_scale", choices=[0, 1], type=int, default=0)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--optimizer", choices=["adam", "sgd"], default="adam")
     parser.add_argument("--weight_decay", type=float, default=0)
