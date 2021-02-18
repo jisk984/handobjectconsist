@@ -48,7 +48,7 @@ def get_dataset(
                                           use_cache=use_cache)
         input_res = (640, 480)
     elif dataset_name == "obman":
-        pose_dataset = obman.ObMan(split="train")
+        pose_dataset = obman.ObMan(split=split)
         input_res = (480, 480)
     elif dataset_name == "syntho3dv2":
         pose_dataset = syntho3dv2.SynthHO3Dv2(split="train",
