@@ -32,12 +32,14 @@ def main(args):
         f"checkpoints/{dat_str}_{split_str}_mini{args.mini_factor}/{now.year}_{now.month:02d}_{now.day:02d}/"
         f"{args.com}_frac{args.fraction:.1e}"
         f"lr{args.lr}_mom{args.momentum}_bs{args.batch_size}_"
+        f"_oenc{args.object_model_encode}"
         f"_preds{args.predict_scale}_mrow{args.max_rot}"
         f"_lmbeta{args.mano_lambda_shape:.1e}"
         f"_jc{args.center_jittering:.2f}_sj{args.scale_jittering:.2f}"
         f"_lmpr{args.mano_lambda_pose_reg:.1e}"
         f"_lmrj3d{args.mano_lambda_recov_joints3d:.1e}"
         f"_lovr3d{args.obj_lambda_recov_verts3d:.1e}"
+        f"_chaml{args.obj_chamfer_loss}"
         f"seed{args.manual_seed}")
     if args.no_augm:
         exp_id = f"{exp_id}_no_augm"
@@ -141,6 +143,7 @@ def main(args):
         obj_trans_factor=args.obj_trans_factor,
         obj_scale_factor=args.obj_scale_factor,
         obj_chamfer_loss=args.obj_chamfer_loss,
+        obj_model_encode=args.obj_model_encode,
         predict_scale=args.predict_scale,
         mano_fhb_hand="fhbhands" in args.train_datasets,
     )
@@ -405,6 +408,11 @@ if __name__ == "__main__":
                         default=0.0001,
                         help="Multiplier for scale prediction")
     parser.add_argument("--obj_chamfer_loss",
+                        type=int,
+                        default=0,
+                        choices=[0, 1],
+                        help="Supervise object cloud with chamfer")
+    parser.add_argument("--obj_model_encode",
                         type=int,
                         default=0,
                         choices=[0, 1],

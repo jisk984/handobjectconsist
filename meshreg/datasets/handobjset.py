@@ -331,7 +331,7 @@ class HandObjSet(Dataset):
                 idx, rescale=self.rescale_canonical)
             if flip:
                 obj_canverts[:, 0] = -obj_canverts[:, 0]
-            sample[BaseQueries.OBJCANVERTS] = obj_canverts
+            sample[BaseQueries.OBJCANVERTS] = obj_canverts.astype(np.float32)
             sample[BaseQueries.OBJCANSCALE] = obj_canscale
             sample[BaseQueries.OBJCANTRANS] = obj_cantrans
 

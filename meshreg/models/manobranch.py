@@ -1,11 +1,45 @@
+import pickle
+
 import numpy as np
 import torch
-from torch import nn
 import torch.nn.functional as torch_f
-
 from manopth.manolayer import ManoLayer
+from torch import nn
 
 from meshreg.datasets.queries import TransQueries
+
+
+class ManoAdaptor(torch.nn.Module):
+    def __init__(self, mano_layer, load_path=None):
+        super().__init__()
+        self.adaptor = torch.nn.Linear(778, 21, bias=False)
+        if load_path is not None:
+            with open(load_path, "rb") as p_f:
+                exp_data = pickle.load(p_f)
+                weights = exp_data["adaptor"]
+            regressor = torch.Tensor(weights)
+            self.register_buffer("J_regressor", regressor)
+        else:
+            regressor = mano_layer._buffers["th_J_regressor"]
+            tip_reg = regressor.new_zeros(5, regressor.shape[1])
+            tip_reg[0, 745] = 1
+            tip_reg[1, 317] = 1
+            tip_reg[2, 444] = 1
+            tip_reg[3, 556] = 1
+            tip_reg[4, 673] = 1
+            reordered_reg = torch.cat([regressor, tip_reg])[[
+                0, 13, 14, 15, 16, 1, 2, 3, 17, 4, 5, 6, 18, 10, 11, 12, 19, 7,
+                8, 9, 20
+            ]]
+            self.register_buffer("J_regressor", reordered_reg)
+        self.adaptor.weight.data = self.J_regressor
+
+    def forward(self, inp):
+        fix_idxs = [0, 4, 8, 12, 16, 20]
+        for idx in fix_idxs:
+            self.adaptor.weight.data[idx] = self.J_regressor[idx]
+        return self.adaptor(inp.transpose(
+            2, 1)), self.adaptor.weight - self.J_regressor
 
 
 class ManoBranch(nn.Module):
@@ -231,3 +265,36 @@ class ManoLoss:
         mano_losses["mano_total_loss"] = final_loss
         mano_losses["mano_reg_loss"] = reg_loss
         return final_loss, mano_losses
+
+
+class ManoAdaptor(torch.nn.Module):
+    def __init__(self, mano_layer, load_path=None):
+        super().__init__()
+        self.adaptor = torch.nn.Linear(778, 21, bias=False)
+        if load_path is not None:
+            with open(load_path, "rb") as p_f:
+                exp_data = pickle.load(p_f)
+                weights = exp_data["adaptor"]
+            regressor = torch.Tensor(weights)
+            self.register_buffer("J_regressor", regressor)
+        else:
+            regressor = mano_layer._buffers["th_J_regressor"]
+            tip_reg = regressor.new_zeros(5, regressor.shape[1])
+            tip_reg[0, 745] = 1
+            tip_reg[1, 317] = 1
+            tip_reg[2, 444] = 1
+            tip_reg[3, 556] = 1
+            tip_reg[4, 673] = 1
+            reordered_reg = torch.cat([regressor, tip_reg])[[
+                0, 13, 14, 15, 16, 1, 2, 3, 17, 4, 5, 6, 18, 10, 11, 12, 19, 7,
+                8, 9, 20
+            ]]
+            self.register_buffer("J_regressor", reordered_reg)
+        self.adaptor.weight.data = self.J_regressor
+
+    def forward(self, inp):
+        fix_idxs = [0, 4, 8, 12, 16, 20]
+        for idx in fix_idxs:
+            self.adaptor.weight.data[idx] = self.J_regressor[idx]
+        return self.adaptor(inp.transpose(
+            2, 1)), self.adaptor.weight - self.J_regressor

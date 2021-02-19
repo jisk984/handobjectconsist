@@ -10,47 +10,15 @@ from torch import nn
 from meshreg.datasets.queries import BaseQueries, TransQueries, one_query_in
 from meshreg.models import project, resnet
 from meshreg.models.absolutebranch import AbsoluteBranch
-from meshreg.models.manobranch import ManoBranch, ManoLoss
+from meshreg.models.manobranch import ManoBranch, ManoLoss, ManoAdaptor
 from meshreg.models.objbranch import ObjBranch
+from meshreg.models.pointnet import PointNet
 
 
 def normalize_pixel_out(data, inp_res=256):
     centered = data - inp_res
     scaled = centered / inp_res / 2
     return scaled.float()
-
-
-class ManoAdaptor(torch.nn.Module):
-    def __init__(self, mano_layer, load_path=None):
-        super().__init__()
-        self.adaptor = torch.nn.Linear(778, 21, bias=False)
-        if load_path is not None:
-            with open(load_path, "rb") as p_f:
-                exp_data = pickle.load(p_f)
-                weights = exp_data["adaptor"]
-            regressor = torch.Tensor(weights)
-            self.register_buffer("J_regressor", regressor)
-        else:
-            regressor = mano_layer._buffers["th_J_regressor"]
-            tip_reg = regressor.new_zeros(5, regressor.shape[1])
-            tip_reg[0, 745] = 1
-            tip_reg[1, 317] = 1
-            tip_reg[2, 444] = 1
-            tip_reg[3, 556] = 1
-            tip_reg[4, 673] = 1
-            reordered_reg = torch.cat([regressor, tip_reg])[[
-                0, 13, 14, 15, 16, 1, 2, 3, 17, 4, 5, 6, 18, 10, 11, 12, 19, 7,
-                8, 9, 20
-            ]]
-            self.register_buffer("J_regressor", reordered_reg)
-        self.adaptor.weight.data = self.J_regressor
-
-    def forward(self, inp):
-        fix_idxs = [0, 4, 8, 12, 16, 20]
-        for idx in fix_idxs:
-            self.adaptor.weight.data[idx] = self.J_regressor[idx]
-        return self.adaptor(inp.transpose(
-            2, 1)), self.adaptor.weight - self.J_regressor
 
 
 class MeshRegNet(nn.Module):
@@ -83,6 +51,7 @@ class MeshRegNet(nn.Module):
         predict_scale=False,
         inp_res=256,
         obj_chamfer_loss=1,
+        obj_model_encode=1,
     ):
         """
         Args:
@@ -107,6 +76,7 @@ class MeshRegNet(nn.Module):
         self.inp_res = inp_res
         if int(resnet_version) == 18:
             img_feature_size = 512
+            shape_feature_size = 256
             base_net = resnet.resnet18(pretrained=True)
         elif int(resnet_version) == 50:
             img_feature_size = 2048
@@ -119,6 +89,25 @@ class MeshRegNet(nn.Module):
         self.mano_fhb_hand = mano_fhb_hand
         self.base_net = base_net
         self.obj_chamfer_loss = obj_chamfer_loss
+        self.obj_model_encode = obj_model_encode
+        if self.obj_model_encode:
+            self.shape_encoder = PointNet(feature_dim=shape_feature_size)
+            self.shape_fc = nn.Sequential(
+                nn.Linear(shape_feature_size, img_feature_size),
+                nn.BatchNorm1d(img_feature_size), nn.ReLU(inplace=True))
+            self.corr_fc = nn.Sequential(
+                nn.Linear(img_feature_size, img_feature_size // 2),
+                nn.BatchNorm1d(img_feature_size // 2), nn.ReLU(inplace=True))
+            self.diff_fc = nn.Sequential(
+                nn.Linear(img_feature_size, img_feature_size // 2),
+                nn.BatchNorm1d(img_feature_size // 2), nn.ReLU(inplace=True))
+            self.compress = nn.Sequential(nn.Linear(img_feature_size * 2, 800),
+                                          nn.BatchNorm1d(800),
+                                          nn.ReLU(inplace=True),
+                                          nn.Linear(800, 400),
+                                          nn.BatchNorm1d(400),
+                                          nn.ReLU(inplace=True),
+                                          nn.Linear(400, img_feature_size))
         # Predict translation and scaling for hand
         self.scaletrans_branch = AbsoluteBranch(
             base_neurons=[img_feature_size,
@@ -367,6 +356,15 @@ class MeshRegNet(nn.Module):
         losses = {}
         image = sample[TransQueries.IMAGE].cuda()
         features, _ = self.base_net(image)
+        if self.obj_model_encode:
+            canobjverts = sample[BaseQueries.OBJCANVERTS].cuda()
+            shape_features = self.shape_fc(self.shape_encoder(canobjverts))
+            global_feature = torch.cat(
+                (self.corr_fc(features * shape_features),
+                 self.diff_fc(features - shape_features), features),
+                dim=1)
+            features = self.compress(global_feature)
+
         has_mano_super = one_query_in(
             sample.keys(),
             [
