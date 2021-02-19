@@ -32,7 +32,7 @@ def main(args):
         f"checkpoints/{dat_str}_{split_str}_mini{args.mini_factor}/{now.year}_{now.month:02d}_{now.day:02d}/"
         f"{args.com}_frac{args.fraction:.1e}"
         f"lr{args.lr}_mom{args.momentum}_bs{args.batch_size}_"
-        f"_oenc{args.object_model_encode}"
+        f"_oenc{args.obj_model_encode}"
         f"_preds{args.predict_scale}_mrow{args.max_rot}"
         f"_lmbeta{args.mano_lambda_shape:.1e}"
         f"_jc{args.center_jittering:.2f}_sj{args.scale_jittering:.2f}"
