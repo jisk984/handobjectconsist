@@ -1,17 +1,17 @@
 import pickle
-import torch
-from torch import nn
-import torch.nn.functional as torch_f
 
+import torch
+import torch.nn.functional as torch_f
 from libyana.camutils import project as camproject
 from libyana.modelutils.freeze import rec_freeze
+from pytorch3d.loss import chamfer
+from torch import nn
 
-from meshreg.models import resnet
+from meshreg.datasets.queries import BaseQueries, TransQueries, one_query_in
+from meshreg.models import project, resnet
 from meshreg.models.absolutebranch import AbsoluteBranch
 from meshreg.models.manobranch import ManoBranch, ManoLoss
 from meshreg.models.objbranch import ObjBranch
-from meshreg.models import project
-from meshreg.datasets.queries import TransQueries, BaseQueries, one_query_in
 
 
 def normalize_pixel_out(data, inp_res=256):
@@ -82,6 +82,7 @@ class MeshRegNet(nn.Module):
         obj_scale_factor=1,
         predict_scale=False,
         inp_res=256,
+        obj_chamfer_loss=1,
     ):
         """
         Args:
@@ -100,6 +101,7 @@ class MeshRegNet(nn.Module):
             mano_lambda_joints3d: weight to supervise distances
             adapt_atlas_decoder: add layer between encoder and decoder, usefull
                 when finetuning from separately pretrained encoder and decoder
+            obj_chamfer_loss: whether to supervise object with chamfer dist
         """
         super().__init__()
         self.inp_res = inp_res
@@ -116,6 +118,7 @@ class MeshRegNet(nn.Module):
         mano_base_neurons = [img_feature_size] + mano_neurons
         self.mano_fhb_hand = mano_fhb_hand
         self.base_net = base_net
+        self.obj_chamfer_loss = obj_chamfer_loss
         # Predict translation and scaling for hand
         self.scaletrans_branch = AbsoluteBranch(
             base_neurons=[img_feature_size,
@@ -346,7 +349,11 @@ class MeshRegNet(nn.Module):
             objverts3d_gt = sample[BaseQueries.OBJVERTS3D].cuda()
             recov_verts3d = obj_results["recov_objverts3d"]
 
-            obj_recov_loss = torch_f.mse_loss(recov_verts3d, objverts3d_gt)
+            if self.obj_chamfer_loss:
+                obj_recov_loss = chamfer.chamfer_distance(
+                    recov_verts3d, objverts3d_gt)[0]
+            else:
+                obj_recov_loss = torch_f.mse_loss(recov_verts3d, objverts3d_gt)
             if total_loss is None:
                 total_loss = self.obj_lambda_recov_verts3d * obj_recov_loss
             else:

@@ -140,6 +140,7 @@ def main(args):
         obj_lambda_verts3d=args.obj_lambda_verts3d,
         obj_trans_factor=args.obj_trans_factor,
         obj_scale_factor=args.obj_scale_factor,
+        obj_chamfer_loss=args.obj_chamfer_loss,
         predict_scale=args.predict_scale,
         mano_fhb_hand="fhbhands" in args.train_datasets,
     )
@@ -403,6 +404,11 @@ if __name__ == "__main__":
                         type=float,
                         default=0.0001,
                         help="Multiplier for scale prediction")
+    parser.add_argument("--obj_chamfer_loss",
+                        type=int,
+                        default=0,
+                        choices=[0, 1],
+                        help="Supervise object cloud with chamfer")
 
     # Evaluation params
     parser.add_argument(
