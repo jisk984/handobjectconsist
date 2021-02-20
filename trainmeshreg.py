@@ -26,6 +26,8 @@ def main(args):
     setseeds.set_all_seeds(args.manual_seed)
     # Initialize hosting
     dat_str = "_".join(args.train_datasets)
+    if args.debug:
+        dat_str = dat_str + "DEBUG"
     now = datetime.now()
     split_str = "_".join(args.train_splits)
     exp_id = (
@@ -199,6 +201,7 @@ def main(args):
                 display_freq=args.display_freq,
                 epoch_display_freq=args.epoch_display_freq,
                 lr_decay_gamma=args.lr_decay_gamma,
+                debug=args.debug,
             )
             monitor.log_train(epoch_idx + 1, {
                 key: val.avg
@@ -207,8 +210,6 @@ def main(args):
             monitor.metrics.save_metrics(epoch_idx + 1, save_dict)
             monitor.metrics.plot_metrics()
             save_results["train_losses"].append(save_dict)
-            with open(result_path, "wb") as p_f:
-                pickle.dump(save_results, p_f)
             modelio.save_checkpoint(
                 {
                     "epoch": epoch_idx + 1,
@@ -235,6 +236,7 @@ def main(args):
                 display_freq=args.display_freq,
                 epoch_display_freq=args.epoch_display_freq,
                 lr_decay_gamma=args.lr_decay_gamma,
+                debug=args.debug,
             )
 
             save_results["val_losses"].append(val_save_dict)
@@ -244,6 +246,9 @@ def main(args):
             })
             monitor.metrics.save_metrics(epoch_idx + 1, val_save_dict)
             monitor.metrics.plot_metrics()
+
+            with open(result_path, "wb") as p_f:
+                pickle.dump(save_results, p_f)
             if args.evaluate:
                 print(val_save_dict)
                 break
@@ -424,6 +429,9 @@ if __name__ == "__main__":
         type=int,
         default=10,
         help="How often to evaluate, 1 for always -1 for never")
+    parser.add_argument("--debug",
+                        action="store_true",
+                        help="Dry debugging run")
 
     # Weighting params
     parser.add_argument(

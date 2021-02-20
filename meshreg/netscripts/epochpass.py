@@ -26,6 +26,7 @@ def epoch_pass(
     epoch_display_freq=1,
     lr_decay_gamma=0,
     freeze_batchnorm=True,
+    debug=False,
 ):
     if train:
         prefix = "train"
@@ -74,6 +75,8 @@ def epoch_pass(
                                  fig=fig,
                                  save_img_path=save_img_path)
         evaluate.feed_evaluators(evaluators, batch, results)
+        if debug:
+            break
     if lr_decay_gamma and scheduler is not None:
         scheduler.step()
     save_dict = {}
@@ -86,7 +89,7 @@ def epoch_pass(
         for met in ["epe_mean", "auc"]:
             loss_name = f"{eval_name}_{met}"
             # Filter nans
-            if eval_res[met] == eval_res[met]:
+            if "corner" not in eval_name:
                 save_dict[loss_name] = {}
                 save_dict[loss_name][prefix] = eval_res[met]
     img_filepath = f"{prefix}_epoch{epoch:04d}_eval.png"

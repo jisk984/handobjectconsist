@@ -250,11 +250,12 @@ class HandObjSet(Dataset):
                 if flip:
                     joints3d[:, 0] = -joints3d[:, 0]
 
-                if BaseQueries.JOINTS3D in query:
-                    sample[BaseQueries.JOINTS3D] = joints3d.astype(np.float32)
+                # TODO put back
                 if self.train:
                     joints3d = rot_mat.dot(joints3d.transpose(1,
                                                               0)).transpose()
+                if BaseQueries.JOINTS3D in query:
+                    sample[BaseQueries.JOINTS3D] = joints3d.astype(np.float32)
                 # Compute 3D center
                 if self.center_idx is not None:
                     if self.center_idx == -1:
@@ -272,12 +273,13 @@ class HandObjSet(Dataset):
             hand_verts3d = self.pose_dataset.get_hand_verts3d(idx)
             if flip:
                 hand_verts3d[:, 0] = -hand_verts3d[:, 0]
+            hand_verts3d = rot_mat.dot(hand_verts3d.transpose(1,
+                                                              0)).transpose()
             if BaseQueries.OBJVERTS3D in query:
+                # TODO revert commit
                 sample[BaseQueries.HANDVERTS3D] = hand_verts3d.astype(
                     np.float32)
             if TransQueries.HANDVERTS3D in query:
-                hand_verts3d = rot_mat.dot(hand_verts3d.transpose(
-                    1, 0)).transpose()
                 if self.center_idx is not None:
                     hand_verts3d = hand_verts3d - center3d
                 sample[TransQueries.HANDVERTS3D] = hand_verts3d.astype(
@@ -288,11 +290,13 @@ class HandObjSet(Dataset):
             obj_verts3d = self.pose_dataset.get_obj_verts_trans(idx)
             if flip:
                 obj_verts3d[:, 0] = -obj_verts3d[:, 0]
+            origin_trans_mesh_rot = rot_mat.dot(obj_verts3d.transpose(
+                1, 0)).transpose()
             if BaseQueries.OBJVERTS3D in query:
-                sample[BaseQueries.OBJVERTS3D] = obj_verts3d
+                # TODO reverse commit
+                sample[BaseQueries.OBJVERTS3D] = origin_trans_mesh_rot
             if TransQueries.OBJVERTS3D in query:
-                origin_trans_mesh = rot_mat.dot(obj_verts3d.transpose(
-                    1, 0)).transpose()
+                origin_trans_mesh = origin_trans_mesh_rot
                 if self.center_idx is not None:
                     origin_trans_mesh = origin_trans_mesh - center3d
                 sample[TransQueries.OBJVERTS3D] = origin_trans_mesh.astype(
@@ -304,11 +308,11 @@ class HandObjSet(Dataset):
                 idx, rescale=self.rescale_canonical)
             if flip:
                 obj_canverts3d[:, 0] = -obj_canverts3d[:, 0]
+            can_rot_mesh = rot_mat.dot(obj_canverts3d.transpose(
+                1, 0)).transpose()
             if BaseQueries.OBJCANROTVERTS in query:
-                sample[BaseQueries.OBJCANROTVERTS] = obj_canverts3d
+                sample[BaseQueries.OBJCANROTVERTS] = can_rot_mesh
             if TransQueries.OBJCANROTVERTS in query:
-                can_rot_mesh = rot_mat.dot(obj_canverts3d.transpose(
-                    1, 0)).transpose()
                 sample[TransQueries.OBJCANROTVERTS] = can_rot_mesh
 
         # Get 3D obj vertices
@@ -340,11 +344,11 @@ class HandObjSet(Dataset):
             obj_corners3d = self.pose_dataset.get_obj_corners3d(idx)
             if flip:
                 obj_corners3d[:, 0] = -obj_corners3d[:, 0]
+            origin_trans_corners = rot_mat.dot(obj_corners3d.transpose(
+                1, 0)).transpose()
             if BaseQueries.OBJCORNERS3D in query:
-                sample[BaseQueries.OBJCORNERS3D] = obj_corners3d
+                sample[BaseQueries.OBJCORNERS3D] = origin_trans_corners
             if TransQueries.OBJCORNERS3D in query:
-                origin_trans_corners = rot_mat.dot(
-                    obj_corners3d.transpose(1, 0)).transpose()
                 if self.center_idx is not None:
                     origin_trans_corners = origin_trans_corners - center3d
                 sample[TransQueries.OBJCORNERS3D] = origin_trans_corners

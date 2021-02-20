@@ -8,14 +8,14 @@ center_jittering:
   - 0.3
 scale_jittering:
   - 0.1
-    # - 0
+  - 0
 obj_chamfer_loss:
   - 1
-  - 0
 com:
-  - "chamfer_encode_shape/"
+  - "chamfer_encode_shape_remove_augm/"
 max_rot:
-  - 1
+  # - 1
+  - 0
 train_dataset:
   # - "ho3dv2"
   - "obman"
@@ -28,9 +28,7 @@ val_split:
   - "test"
 predict_scale:
   - 0
-  - 1
 resume:
   - "checkpoints/obman_train_mini1/2021_02_18/predict_and_not_scale/_frac1.0e+00lr0.0001_mom0.9_bs32__preds1_mrow0.0_lmbeta5.0e-05_jc0.30_sj0.00_lmpr5.0e-05_lmrj3d5.0e-01_lovr3d5.0e-01seed0/checkpoint_40.pth"
 obj_model_encode:
-  - 1
   - 0

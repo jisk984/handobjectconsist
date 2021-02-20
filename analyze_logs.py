@@ -27,6 +27,7 @@ parser.add_argument("--monitor_metrics",
                     nargs="+",
                     default=[
                         "objverts3d_chamfer", "objverts3d_mepe_trans",
+                        "joints3d_epe_mean", "joints3d_cent_epe_mean",
                         "recov_joint3d", "pose_reg", "total_loss"
                     ])
 parser.add_argument("--min", action="store_true")

@@ -18,15 +18,26 @@ def parse_logs(folder,
     opt_path = os.path.join(folder, "opt.pkl")
     train_df = pd.DataFrame(logio.get_logs(train_path))
     val_df = pd.DataFrame(logio.get_logs(val_path))
+
+    result_path = os.path.join(folder, "results", "results.pkl")
+    with open(result_path, "rb") as p_f:
+        res = pickle.load(p_f)
     with open(opt_path, "rb") as p_f:
         opts = pickle.load(p_f)
     for monitor_metric in monitor_metrics:
-        res_dict[f"{monitor_metric}_train"] = train_df[monitor_metric].tolist(
-        )[-1]
-        res_dict[f"{monitor_metric}_val"] = val_df[monitor_metric].tolist()[-1]
-        plots[f"{monitor_metric}_train"].append(
-            train_df[monitor_metric].tolist())
-        plots[f"{monitor_metric}_val"].append(val_df[monitor_metric].tolist())
+        train_monitor_vals = [
+            epoch_res[monitor_metric]["train"]
+            for epoch_res in res[f"train_losses"]
+        ]
+        val_monitor_vals = [
+            epoch_res[monitor_metric]["val"]
+            for epoch_res in res[f"val_losses"]
+        ]
+        res_dict[f"{monitor_metric}_train"] = train_monitor_vals[-1]
+        res_dict[f"{monitor_metric}_val"] = val_monitor_vals[-1]
+        res_dict["epoch"] = len(val_monitor_vals)
+        plots[f"{monitor_metric}_train"].append(train_monitor_vals)
+        plots[f"{monitor_metric}_val"].append(val_monitor_vals)
     for key, val in opts.items():
         if isinstance(val, list):
             res_dict[key] = tuple(val)
@@ -62,10 +73,14 @@ def make_exp_html(df_data, plots, metric_names, destination, compact=False):
     with (destination / "raw.html").open("w") as h_f:
         h_f.write(df_html)
 
+    with open(destination / "add_js.txt", "rt") as j_f:
+        js_str = j_f.read()
     with open("htmlassets/index.html", "rt") as t_f:
         html_str = t_f.read()
     with open(destination / "raw.html", "rt") as t_f:
         table_str = t_f.read()
-    full_html_str = (html_str.replace("TABLEPLACEHOLDER", table_str))
+    full_html_str = (html_str.replace("JSPLACEHOLDER", js_str).replace(
+        "TABLEPLACEHOLDER", table_str).replace("PLOTPLACEHOLDER",
+                                               main_plot_str))
     with open(destination / "index.html", "wt") as h_f:
         h_f.write(full_html_str)
