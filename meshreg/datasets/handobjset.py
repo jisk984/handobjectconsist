@@ -13,6 +13,47 @@ from meshreg.datasets.queries import BaseQueries, TransQueries, one_query_in
 from meshreg.datasets import datutils
 
 
+def get_affine_transform(center, scale, cam_center, res_out, rot=0):
+    rot_mat = np.zeros((3, 3))
+    sn, cs = np.sin(rot), np.cos(rot)
+    rot_mat[0, :2] = [cs, -sn]
+    rot_mat[1, :2] = [sn, cs]
+    rot_mat[2, 2] = 1
+    # Rotate center to obtain coordinate of center in rotated image
+    origin_rot_center = rot_mat.dot(center.tolist() + [1])[:2]
+
+    # Get center for transform with verts rotated around optical axis
+    # (through pixel center, smthg like 128, 128 in pixels and 0,0 in 3d world)
+    # For this, rotate the center but around center of image (vs 0,0 in pixel space)
+    t_mat = np.eye(3)
+    t_mat[0, 2] = -cam_center[1]
+    t_mat[1, 2] = -cam_center[0]
+    # t_mat[0, 2] = -center[0]
+    # t_mat[1, 2] = -center[1]
+    print(t_mat)
+    t_inv = t_mat.copy()
+    t_inv[:2, 2] *= -1
+    transformed_center = (t_inv.dot(rot_mat).dot(t_mat).dot(center.tolist() +
+                                                            [1]))
+    post_rot_trans = handutils.get_affine_trans_no_rot(origin_rot_center,
+                                                       scale, res_out)
+    total_trans = post_rot_trans.dot(rot_mat)
+    # check_t = get_affine_transform_bak(center, scale, res, rot)
+    # print(total_trans, check_t)
+    affinetrans_post_rot = handutils.get_affine_trans_no_rot(
+        transformed_center[:2], scale, res_out)
+    return (
+        total_trans.astype(np.float32),
+        affinetrans_post_rot.astype(np.float32),
+    )
+
+
+def project(points3d, cam_intr):
+    hom_2d = np.array(cam_intr).dot(points3d.transpose()).transpose()
+    points2d = (hom_2d / hom_2d[:, 2:])[:, :2]
+    return points2d.astype(np.float32)
+
+
 class HandObjSet(Dataset):
     """Hand-Object dataset
     """
@@ -160,10 +201,14 @@ class HandObjSet(Dataset):
                             [np.sin(rot), np.cos(rot), 0],
                             [0, 0, 1]]).astype(np.float32)
 
+        camintr = self.pose_dataset.get_camintr(idx)
         # Get 2D hand joints
         if (TransQueries.JOINTS2D in query) or (TransQueries.IMAGE in query):
-            affinetrans, post_rot_trans = handutils.get_affine_transform(
-                center, scale, self.inp_res, rot=rot)
+            affinetrans, post_rot_trans = get_affine_transform(center,
+                                                               scale,
+                                                               camintr[:2, 2],
+                                                               self.inp_res,
+                                                               rot=rot)
             if TransQueries.AFFINETRANS in query:
                 sample[TransQueries.AFFINETRANS] = affinetrans
         if BaseQueries.JOINTS2D in query or TransQueries.JOINTS2D in query:
@@ -177,14 +222,12 @@ class HandObjSet(Dataset):
             rows = handutils.transform_coords(joints2d, affinetrans)
             sample[TransQueries.JOINTS2D] = np.array(rows).astype(np.float32)
 
-        if BaseQueries.CAMINTR in query or TransQueries.CAMINTR in query:
-            camintr = self.pose_dataset.get_camintr(idx)
-            if BaseQueries.CAMINTR in query:
-                sample[BaseQueries.CAMINTR] = camintr.astype(np.float32)
-            if TransQueries.CAMINTR in query:
-                # Rotation is applied as extr transform
-                new_camintr = post_rot_trans.dot(camintr)
-                sample[TransQueries.CAMINTR] = new_camintr.astype(np.float32)
+        if BaseQueries.CAMINTR in query:
+            sample[BaseQueries.CAMINTR] = camintr.astype(np.float32)
+        if TransQueries.CAMINTR in query:
+            # Rotation is applied as extr transform
+            new_camintr = post_rot_trans.dot(camintr)
+            sample[TransQueries.CAMINTR] = new_camintr.astype(np.float32)
 
         # Get 2D object points
         if BaseQueries.OBJVERTS2D in query or (TransQueries.OBJVERTS2D
@@ -296,12 +339,12 @@ class HandObjSet(Dataset):
                 # TODO reverse commit
                 sample[BaseQueries.OBJVERTS3D] = origin_trans_mesh_rot
             if TransQueries.OBJVERTS3D in query:
-                origin_trans_mesh = origin_trans_mesh_rot
+                origin_trans_mesh = origin_trans_mesh_rot.copy()
                 if self.center_idx is not None:
                     origin_trans_mesh = origin_trans_mesh - center3d
                 sample[TransQueries.OBJVERTS3D] = origin_trans_mesh.astype(
                     np.float32)
-
+            # TODO this should be 0 !!!
         # Get 3D obj vertices
         if TransQueries.OBJCANROTVERTS in query or BaseQueries.OBJCANROTVERTS in query:
             obj_canverts3d = self.pose_dataset.get_obj_verts_can_rot(
@@ -416,6 +459,7 @@ class HandObjSet(Dataset):
                     (0, 0, self.inp_res[0], self.inp_res[1]))
                 jittermask = func_transforms.to_tensor(jittermask).float()
                 sample[TransQueries.JITTERMASK] = jittermask
+
         if self.pose_dataset.has_dist2strong and self.has_dist2strong:
             dist2strong = self.pose_dataset.get_dist2strong(idx)
             sample["dist2strong"] = dist2strong

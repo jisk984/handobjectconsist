@@ -85,6 +85,7 @@ class ObjBranch(nn.Module):
         # Recover 2D positions given camera intrinsic parameters and object vertex
         # coordinates in camera coordinate reference
         pred_objverts2d = camproject.batch_proj2d(objverts3d, camintr)
+        # check for 3d overlap
         if BaseQueries.OBJCORNERS3D in sample:
             canobjcorners = sample[BaseQueries.OBJCANCORNERS].cuda()
             rotobjcorners = rotmat.bmm(canobjcorners.float().transpose(
