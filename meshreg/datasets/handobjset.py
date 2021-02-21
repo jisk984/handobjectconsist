@@ -26,11 +26,8 @@ def get_affine_transform(center, scale, cam_center, res_out, rot=0):
     # (through pixel center, smthg like 128, 128 in pixels and 0,0 in 3d world)
     # For this, rotate the center but around center of image (vs 0,0 in pixel space)
     t_mat = np.eye(3)
-    t_mat[0, 2] = -cam_center[1]
-    t_mat[1, 2] = -cam_center[0]
-    # t_mat[0, 2] = -center[0]
-    # t_mat[1, 2] = -center[1]
-    print(t_mat)
+    t_mat[0, 2] = -cam_center[0]
+    t_mat[1, 2] = -cam_center[1]
     t_inv = t_mat.copy()
     t_inv[:2, 2] *= -1
     transformed_center = (t_inv.dot(rot_mat).dot(t_mat).dot(center.tolist() +
@@ -459,6 +456,11 @@ class HandObjSet(Dataset):
                     (0, 0, self.inp_res[0], self.inp_res[1]))
                 jittermask = func_transforms.to_tensor(jittermask).float()
                 sample[TransQueries.JITTERMASK] = jittermask
+        proj2d = project(origin_trans_mesh_rot, new_camintr)
+        diff2d = transobjverts2d - proj2d
+        print(np.linalg.norm(diff2d, 2, -1).max())
+        import pudb
+        pu.db
 
         if self.pose_dataset.has_dist2strong and self.has_dist2strong:
             dist2strong = self.pose_dataset.get_dist2strong(idx)
