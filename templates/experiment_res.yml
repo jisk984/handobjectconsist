@@ -1,8 +1,7 @@
 job_name:
-  # - "ho3dreg"
-  - "obmanreg"
+  - "obmanres"
 lr:
-  - 0.0001
+  - 0.00002
 batch_size:
   - 32
 center_jittering:
@@ -13,36 +12,27 @@ scale_jittering:
 obj_chamfer_loss:
   - 1
 com:
-  - "encodepredscale"
+  - "resume_lowlr/"
 max_rot:
   - 1
-  # - 0.2
 seed:
   - 0
-  # - 1
-# HO3D
-# train_dataset:
-#   - "ho3dv2"
-# val_dataset:
-#   - "ho3dv2"
-# train_splits:
-#   - "trainval"
-# val_split:
-#   - "val"
-# OBMAN
 train_dataset:
+  # - "ho3dv2"
   - "obman"
 val_dataset:
   - "obman"
+    # - "ho3dv2"
 train_splits:
+  # - "trainval"
   - "train"
 val_split:
   - "test"
+  # - "val"
 predict_scale:
   - 0
-  - 1
 resume:
   # - "checkpoints/obman_train_mini1/2021_02_18/predict_and_not_scale/_frac1.0e+00lr0.0001_mom0.9_bs32__preds1_mrow0.0_lmbeta5.0e-05_jc0.30_sj0.00_lmpr5.0e-05_lmrj3d5.0e-01_lovr3d5.0e-01seed0/checkpoint_40.pth"
-  - "\"\""
+  - "checkpoints/obman_train_mini1/2021_02_20/fixrot_pleasework/checkrot_frac1.0e+00lr0.0001_mom0.9_bs32__oenc0_preds0_mrow1.0_lmbeta5.0e-05_jc0.30_sj0.00_lmpr5.0e-05_lmrj3d5.0e-01_lovr3d5.0e-01_chaml1seed0/checkpoint.pth"
 obj_model_encode:
-  - 1
+  - 0

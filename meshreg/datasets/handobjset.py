@@ -456,11 +456,10 @@ class HandObjSet(Dataset):
                     (0, 0, self.inp_res[0], self.inp_res[1]))
                 jittermask = func_transforms.to_tensor(jittermask).float()
                 sample[TransQueries.JITTERMASK] = jittermask
-        proj2d = project(origin_trans_mesh_rot, new_camintr)
-        diff2d = transobjverts2d - proj2d
-        print(np.linalg.norm(diff2d, 2, -1).max())
-        import pudb
-        pu.db
+        # Check that new_camintr indeed projecst vertices after rotation
+        # to 2d projected locations
+        # proj2d = project(origin_trans_mesh_rot, new_camintr)
+        # diff2d = transobjverts2d - proj2d
 
         if self.pose_dataset.has_dist2strong and self.has_dist2strong:
             dist2strong = self.pose_dataset.get_dist2strong(idx)
